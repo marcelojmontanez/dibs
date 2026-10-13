@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 )
@@ -32,6 +33,12 @@ func run(args []string) error {
 
 	switch args[0] {
 	case "add":
+		fs := flag.NewFlagSet("add", flag.ExitOnError)
+		fs.Parse(args[1:])
+		if fs.NArg() != 1 {
+			return fmt.Errorf("%w: add requires exactly one title", errUsage)
+		}
+		fmt.Println("added:", fs.Arg(0))
 	default:
 		return fmt.Errorf("%w: unknown command %q", errUsage, args[0])
 	}
