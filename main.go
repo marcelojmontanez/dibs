@@ -153,9 +153,9 @@ func runDelete(db *sql.DB, args []string) error {
 		return fmt.Errorf("%w: delete requires exactly one id", errUsage)
 	}
 
-	id, err := strconv.Atoi(fs.Arg(0))
+	id, err := parseID(fs.Arg(0))
 	if err != nil {
-		return fmt.Errorf("%w: task id must be an integer, got %q", errUsage, fs.Arg(0))
+		return err
 	}
 
 	t, err := deleteTask(db, id)
@@ -176,9 +176,9 @@ func runDone(db *sql.DB, args []string) error {
 		return fmt.Errorf("%w: done requires exactly one id", errUsage)
 	}
 
-	id, err := strconv.Atoi(fs.Arg(0))
+	id, err := parseID(fs.Arg(0))
 	if err != nil {
-		return fmt.Errorf("%w: task id must be an integer, got %q", errUsage, fs.Arg(0))
+		return err
 	}
 
 	t, err := selectTask(db, id)
@@ -196,6 +196,14 @@ func runDone(db *sql.DB, args []string) error {
 	}
 	fmt.Println("completed:", t.title)
 	return nil
+}
+
+func parseID(s string) (int, error) {
+	id, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("%w: task id must be an integer, got %q", errUsage, s)
+	}
+	return id, nil
 }
 
 func newFlagSet(name string) *flag.FlagSet {
