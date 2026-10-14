@@ -53,7 +53,12 @@ func run(args []string) error {
 
 	for _, c := range commands {
 		if c.name == args[0] {
-			db, err := openDB()
+			path, err := dbPath()
+			if err != nil {
+				return err
+			}
+
+			db, err := openDB(path)
 			if err != nil {
 				return err
 			}

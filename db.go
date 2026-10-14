@@ -51,12 +51,7 @@ func selectTasks(db *sql.DB) ([]task, error) {
 	return tasks, nil
 }
 
-func openDB() (*sql.DB, error) {
-	path, err := dbPath()
-	if err != nil {
-		return nil, err
-	}
-
+func openDB(path string) (*sql.DB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return nil, err
 	}
