@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 func insertTask(db *sql.DB, title string) error {
 	_, err := db.Exec("INSERT INTO tasks (title) VALUES (?)", title)
 	if err != nil {
-		return fmt.Errorf("save task: %w", err)
+		return fmt.Errorf("insert task: %w", err)
 	}
 	return nil
 }
