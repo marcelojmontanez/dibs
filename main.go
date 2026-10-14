@@ -23,8 +23,8 @@ func (c command) synopsis() string {
 }
 
 var commands = []command{
-	{name: "add", args: "<title>", short: "add a task", run: add},
-	{name: "list", short: "list all tasks", run: list},
+	{name: "add", args: "<title>", short: "add a task", run: runAdd},
+	{name: "list", short: "list all tasks", run: runList},
 }
 
 var errUsage = errors.New("usage")
@@ -93,7 +93,7 @@ func usage() string {
 	return b.String()
 }
 
-func add(db *sql.DB, args []string) error {
+func runAdd(db *sql.DB, args []string) error {
 	fs := newFlagSet("add")
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("%w: %w", errUsage, err)
@@ -110,7 +110,7 @@ func add(db *sql.DB, args []string) error {
 	return nil
 }
 
-func list(db *sql.DB, args []string) error {
+func runList(db *sql.DB, args []string) error {
 	fs := newFlagSet("list")
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("%w: %w", errUsage, err)
