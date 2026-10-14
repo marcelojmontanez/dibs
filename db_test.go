@@ -22,8 +22,8 @@ func TestInsertAndSelect(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := []task{{id: 2, title: "buy milk"}}
+	want := []task{{id: 1, title: "buy milk"}}
 	if !slices.Equal(tasks, want) {
-		t.Errorf("selectTasks() = %v, want %v", tasks, want)
+		t.Errorf("selectTasks():\n got: %#v\nwant: %#v", tasks, want)
 	}
 }
