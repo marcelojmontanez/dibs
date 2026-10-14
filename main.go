@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -88,8 +89,10 @@ func usage() string {
 }
 
 func add(db *sql.DB, args []string) error {
-	fs := flag.NewFlagSet("add", flag.ExitOnError)
-	fs.Parse(args)
+	fs := newFlagSet("add")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("%w: %w", errUsage, err)
+	}
 
 	if fs.NArg() != 1 {
 		return fmt.Errorf("%w: add requires exactly one title", errUsage)
@@ -103,8 +106,10 @@ func add(db *sql.DB, args []string) error {
 }
 
 func list(db *sql.DB, args []string) error {
-	fs := flag.NewFlagSet("list", flag.ExitOnError)
-	fs.Parse(args)
+	fs := newFlagSet("list")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("%w: %w", errUsage, err)
+	}
 
 	if fs.NArg() != 0 {
 		return fmt.Errorf("%w: list takes no arguments", errUsage)
@@ -125,4 +130,10 @@ func list(db *sql.DB, args []string) error {
 	}
 
 	return nil
+}
+
+func newFlagSet(name string) *flag.FlagSet {
+	fs := flag.NewFlagSet(name, flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	return fs
 }
