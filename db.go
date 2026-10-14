@@ -15,12 +15,40 @@ CREATE TABLE IF NOT EXISTS tasks (
 	title TEXT NOT NULL
 )`
 
+type task struct {
+	id    int
+	title string
+}
+
 func insertTask(db *sql.DB, title string) error {
 	_, err := db.Exec("INSERT INTO tasks (title) VALUES (?)", title)
 	if err != nil {
 		return fmt.Errorf("insert task: %w", err)
 	}
 	return nil
+}
+
+func selectTasks(db *sql.DB) ([]task, error) {
+	rows, err := db.Query("SELECT id, title FROM tasks ORDER BY id")
+	if err != nil {
+		return nil, fmt.Errorf("select tasks: %w", err)
+	}
+	defer rows.Close()
+
+	var tasks []task
+	for rows.Next() {
+		var t task
+		if err := rows.Scan(&t.id, &t.title); err != nil {
+			return nil, fmt.Errorf("select tasks: %w", err)
+		}
+		tasks = append(tasks, t)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("select tasks: %w", err)
+	}
+
+	return tasks, nil
 }
 
 func openDB() (*sql.DB, error) {

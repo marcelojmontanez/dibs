@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -22,6 +23,7 @@ func (c command) synopsis() string {
 
 var commands = []command{
 	{name: "add", args: "<title>", short: "add a task", run: add},
+	{name: "list", short: "list all tasks", run: list},
 }
 
 var errUsage = errors.New("usage")
@@ -97,5 +99,30 @@ func add(db *sql.DB, args []string) error {
 		return err
 	}
 	fmt.Println("added:", fs.Arg(0))
+	return nil
+}
+
+func list(db *sql.DB, args []string) error {
+	fs := flag.NewFlagSet("list", flag.ExitOnError)
+	fs.Parse(args)
+
+	if fs.NArg() != 0 {
+		return fmt.Errorf("%w: list takes no arguments", errUsage)
+	}
+
+	tasks, err := selectTasks(db)
+	if err != nil {
+		return err
+	}
+
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	width := len(strconv.Itoa(tasks[len(tasks)-1].id))
+	for _, t := range tasks {
+		fmt.Printf("%*d  %s\n", width, t.id, t.title)
+	}
+
 	return nil
 }
