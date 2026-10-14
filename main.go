@@ -25,6 +25,7 @@ func (c command) synopsis() string {
 var commands = []command{
 	{name: "add", args: "<title>", short: "add a task", run: runAdd},
 	{name: "list", short: "list all tasks", run: runList},
+	{name: "delete", args: "<id>", short: "delete a task", run: runDelete},
 }
 
 var errUsage = errors.New("usage")
@@ -134,6 +135,29 @@ func runList(db *sql.DB, args []string) error {
 		fmt.Printf("%*d  %s\n", width, t.id, t.title)
 	}
 
+	return nil
+}
+
+func runDelete(db *sql.DB, args []string) error {
+	fs := newFlagSet("delete")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("%w: %w", errUsage, err)
+	}
+
+	if fs.NArg() != 1 {
+		return fmt.Errorf("%w: delete requires exactly one id", errUsage)
+	}
+
+	id, err := strconv.Atoi(fs.Arg(0))
+	if err != nil {
+		return fmt.Errorf("%w: task id must be an integer, got %q", errUsage, fs.Arg(0))
+	}
+
+	t, err := deleteTask(db, id)
+	if err != nil {
+		return err
+	}
+	fmt.Println("deleted:", t.title)
 	return nil
 }
 

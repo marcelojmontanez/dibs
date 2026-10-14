@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,10 +16,18 @@ CREATE TABLE IF NOT EXISTS tasks (
 	title TEXT NOT NULL
 )`
 
+const taskColumns = "id, title"
+
 type task struct {
 	id    int
 	title string
 }
+
+type scanner interface {
+	Scan(dest ...any) error
+}
+
+var errNoTask = errors.New("no such task")
 
 func insertTask(db *sql.DB, title string) error {
 	_, err := db.Exec("INSERT INTO tasks (title) VALUES (?)", title)
@@ -29,7 +38,7 @@ func insertTask(db *sql.DB, title string) error {
 }
 
 func selectTasks(db *sql.DB) ([]task, error) {
-	rows, err := db.Query("SELECT id, title FROM tasks ORDER BY id")
+	rows, err := db.Query("SELECT " + taskColumns + " FROM tasks ORDER BY id")
 	if err != nil {
 		return nil, fmt.Errorf("select tasks: %w", err)
 	}
@@ -37,8 +46,8 @@ func selectTasks(db *sql.DB) ([]task, error) {
 
 	var tasks []task
 	for rows.Next() {
-		var t task
-		if err := rows.Scan(&t.id, &t.title); err != nil {
+		t, err := scanTask(rows)
+		if err != nil {
 			return nil, fmt.Errorf("select tasks: %w", err)
 		}
 		tasks = append(tasks, t)
@@ -49,6 +58,24 @@ func selectTasks(db *sql.DB) ([]task, error) {
 	}
 
 	return tasks, nil
+}
+
+func deleteTask(db *sql.DB, id int) (task, error) {
+	row := db.QueryRow("DELETE FROM tasks WHERE id = ? RETURNING "+taskColumns, id)
+	t, err := scanTask(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return task{}, fmt.Errorf("delete task %d: %w", id, errNoTask)
+		}
+		return task{}, fmt.Errorf("delete task %d: %w", id, err)
+	}
+	return t, nil
+}
+
+func scanTask(s scanner) (task, error) {
+	var t task
+	err := s.Scan(&t.id, &t.title)
+	return t, err
 }
 
 func openDB(path string) (*sql.DB, error) {
