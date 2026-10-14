@@ -10,24 +10,57 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const schema = `
-CREATE TABLE IF NOT EXISTS tasks (
-	id INTEGER PRIMARY KEY,
-	title TEXT NOT NULL
-)`
-
-const taskColumns = "id, title"
-
-type task struct {
-	id    int
-	title string
-}
+var errNoTask = errors.New("no such task")
 
 type scanner interface {
 	Scan(dest ...any) error
 }
 
-var errNoTask = errors.New("no such task")
+// The tasks table. When adding or changing a column, update:
+// schema, taskColumns, task, scanTask, and updateTask together.
+const schema = `
+CREATE TABLE IF NOT EXISTS tasks (
+	id INTEGER PRIMARY KEY,
+	title TEXT NOT NULL,
+	done INTEGER NOT NULL DEFAULT 0
+)`
+
+const taskColumns = "id, title, done"
+
+type task struct {
+	id    int
+	title string
+	done  bool
+}
+
+func scanTask(s scanner) (task, error) {
+	var t task
+	err := s.Scan(&t.id, &t.title, &t.done)
+	return t, err
+}
+
+// updateTask overwrites every field of t.id's row with t's values,
+// so t should be a task the caller just read. If two updates to
+// the same task run at once, one can silently undo the other.
+func updateTask(db *sql.DB, t task) error {
+	result, err := db.Exec(
+		"UPDATE tasks SET title = ?, done = ? WHERE id = ?",
+		t.title, t.done, t.id,
+	)
+	if err != nil {
+		return fmt.Errorf("update task %d: %w", t.id, err)
+	}
+
+	n, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update task %d: %w", t.id, err)
+	}
+	if n == 0 {
+		return fmt.Errorf("update task %d: %w", t.id, errNoTask)
+	}
+
+	return nil
+}
 
 func insertTask(db *sql.DB, title string) error {
 	_, err := db.Exec("INSERT INTO tasks (title) VALUES (?)", title)
@@ -60,6 +93,18 @@ func selectTasks(db *sql.DB) ([]task, error) {
 	return tasks, nil
 }
 
+func selectTask(db *sql.DB, id int) (task, error) {
+	row := db.QueryRow("SELECT "+taskColumns+" FROM tasks WHERE id = ?", id)
+	t, err := scanTask(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return task{}, fmt.Errorf("select task %d: %w", id, errNoTask)
+		}
+		return task{}, fmt.Errorf("select task %d: %w", id, err)
+	}
+	return t, nil
+}
+
 func deleteTask(db *sql.DB, id int) (task, error) {
 	row := db.QueryRow("DELETE FROM tasks WHERE id = ? RETURNING "+taskColumns, id)
 	t, err := scanTask(row)
@@ -70,12 +115,6 @@ func deleteTask(db *sql.DB, id int) (task, error) {
 		return task{}, fmt.Errorf("delete task %d: %w", id, err)
 	}
 	return t, nil
-}
-
-func scanTask(s scanner) (task, error) {
-	var t task
-	err := s.Scan(&t.id, &t.title)
-	return t, err
 }
 
 func openDB(path string) (*sql.DB, error) {

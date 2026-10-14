@@ -26,6 +26,7 @@ var commands = []command{
 	{name: "add", args: "<title>", short: "add a task", run: runAdd},
 	{name: "list", short: "list all tasks", run: runList},
 	{name: "delete", args: "<id>", short: "delete a task", run: runDelete},
+	{name: "done", args: "<id>", short: "mark a task done", run: runDone},
 }
 
 var errUsage = errors.New("usage")
@@ -132,7 +133,11 @@ func runList(db *sql.DB, args []string) error {
 
 	width := len(strconv.Itoa(tasks[len(tasks)-1].id))
 	for _, t := range tasks {
-		fmt.Printf("%*d  %s\n", width, t.id, t.title)
+		mark := " "
+		if t.done {
+			mark = "x"
+		}
+		fmt.Printf("%*d  [%s]  %s\n", width, t.id, mark, t.title)
 	}
 
 	return nil
@@ -158,6 +163,38 @@ func runDelete(db *sql.DB, args []string) error {
 		return err
 	}
 	fmt.Println("deleted:", t.title)
+	return nil
+}
+
+func runDone(db *sql.DB, args []string) error {
+	fs := newFlagSet("done")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("%w: %w", errUsage, err)
+	}
+
+	if fs.NArg() != 1 {
+		return fmt.Errorf("%w: done requires exactly one id", errUsage)
+	}
+
+	id, err := strconv.Atoi(fs.Arg(0))
+	if err != nil {
+		return fmt.Errorf("%w: task id must be an integer, got %q", errUsage, fs.Arg(0))
+	}
+
+	t, err := selectTask(db, id)
+	if err != nil {
+		return err
+	}
+	if t.done {
+		fmt.Println("already done:", t.title)
+		return nil
+	}
+
+	t.done = true
+	if err := updateTask(db, t); err != nil {
+		return err
+	}
+	fmt.Println("completed:", t.title)
 	return nil
 }
 
