@@ -27,6 +27,7 @@ var commands = []command{
 	{name: "list", short: "list all tasks", run: runList},
 	{name: "delete", args: "<id>", short: "delete a task", run: runDelete},
 	{name: "done", args: "<id>", short: "mark a task done", run: runDone},
+	{name: "edit", args: "<id> <title>", short: "edit a task's title", run: runEdit},
 }
 
 var errUsage = errors.New("usage")
@@ -195,6 +196,35 @@ func runDone(db *sql.DB, args []string) error {
 		return err
 	}
 	fmt.Println("completed:", t.title)
+	return nil
+}
+
+func runEdit(db *sql.DB, args []string) error {
+	fs := newFlagSet("edit")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("%w: %w", errUsage, err)
+	}
+
+	if fs.NArg() != 2 {
+		return fmt.Errorf("%w: edit requires an id and a new title", errUsage)
+	}
+
+	id, err := parseID(fs.Arg(0))
+	if err != nil {
+		return err
+	}
+
+	t, err := selectTask(db, id)
+	if err != nil {
+		return err
+	}
+
+	oldTitle := t.title
+	t.title = fs.Arg(1)
+	if err := updateTask(db, t); err != nil {
+		return err
+	}
+	fmt.Printf("edited: %s -> %s\n", oldTitle, t.title)
 	return nil
 }
 
